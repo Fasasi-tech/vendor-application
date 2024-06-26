@@ -58,7 +58,7 @@ exports.login =asyncErrorHandler(async(req, res, next) =>{
     const {email, password} = req.body;
 
     if(!email || !password){
-        const error = new CustomError('Please provide email ID & Password', 404)
+        const error = new CustomError('Please provide email ID & Password', 401)
         return next(error);
     }
 
