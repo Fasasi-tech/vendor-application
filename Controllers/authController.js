@@ -74,8 +74,19 @@ exports.login =asyncErrorHandler(async(req, res, next) =>{
         return next(error)
     }
 
+     // Create custom response object
+     const userResponse = {
+        id: user._id,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        role: user.role,
+        active: user.active,
+        createdAt: user.createdAt,
+        image:user.image
+    };
     
-    createSendResponse(user, 200, res)
+    createSendResponse(userResponse , 200, res)
 
   
 })
