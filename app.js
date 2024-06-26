@@ -40,7 +40,7 @@ const io=initSocketServer(server);
 app.set('io', io); // Make io available globally via app
 const cors= require('cors')
 
-const allowedOrigins = ['http://localhost:3000'];
+const allowedOrigins = ['http://localhost:3000', 'http://localhost:3001'];
 
 app.use(cors({
     origin: function(origin, callback) {
