@@ -6,7 +6,7 @@ const signToken = id => {
 
 })
 }
-exports.createSendResponse = (user, statusCode, res ) =>{
+exports.createSendResponseAuth = (user, statusCode, res ) =>{
 
     const token = signToken(user._id)
 
@@ -20,14 +20,28 @@ exports.createSendResponse = (user, statusCode, res ) =>{
 
     if (process.env.NODE_ENV ==='production'){
         options.secure = true
+       
     }
+    res.cookie('jwt', token, options)
+    user.password= undefined
 
     res.status(statusCode).json({
         status:'success',
          token,
+       
         data:{
             user
          }
        })
 
+}
+
+exports.createSendResponse = (user, statusCode, res) =>{
+    res.status(statusCode).json({
+        status:'success',
+       
+        data:{
+            user
+         }
+       })
 }

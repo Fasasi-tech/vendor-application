@@ -1,40 +1,54 @@
+
 class FilteringFeatures{
     constructor(query, queryStr){
         this.query = query;
         this.queryStr = queryStr
     }
 
-    filter(){
 
-        const excludeFields =['sort', 'page', 'limit', 'fields', 'search']
-        const queryObj ={...this.queryStr}
+
+    search() {
+        const excludeFields = ['sort', 'page', 'limit', 'fields', 'search'];
+        const queryObj = { ...this.queryStr };
 
         excludeFields.forEach((el) => {
-            delete queryObj[el]
-        })
+            delete queryObj[el];
+        });
 
-        let queryString=JSON.stringify(queryObj)
-        queryString=queryString.replace(/\b(gte|gt|lte|lt)\b/g, (match)=>`$${match}`)
-        const queryObjs=JSON.parse(queryString)
-      
-        if (this.queryStr.search){
+        let queryString = JSON.stringify(queryObj);
+        queryString = queryString.replace(/\b(gte|gt|lte|lt)\b/g, (match) => `$${match}`);
+        const queryObjs = JSON.parse(queryString);
+
+        if (this.queryStr.search) {
             const search = this.queryStr.search;
             queryObjs.$or = [
                 { firstName: { $regex: search, $options: 'i' } },
                 { lastName: { $regex: search, $options: 'i' } },
-                { email: { $regex: search, $options: 'i' } }
+                { email: { $regex: search, $options: 'i' } },
+                { name: { $regex: search, $options: 'i' } },
+                {'previousDetails.name':{ $regex: search, $options: 'i' }},
+                {'updatedBy.email':{ $regex: search, $options: 'i' }}
+                
+
             ];
             delete queryObjs.search; // Remove keyword from query object
         }
-        this.query = this.query.find(queryObjs)
 
+        // Handle active status
+        if (this.queryStr.active !== undefined) {
+            queryObjs.active = this.queryStr.active === 'true'; // Convert to boolean
+        }
+
+        this.query = this.query.find(queryObjs);
         return this;
     }
+
+    // Other methods...
 
     
     sort(){
         if(this.queryStr.sort){
-            const sortBy=req.queryStr.sort.split(',').join('')
+            const sortBy=this.queryStr.sort.split(',').join('')
             this.query=this.query.sort(sortBy)
         }else{
             this.query = this.query.sort('-createdAt')

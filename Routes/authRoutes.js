@@ -6,7 +6,7 @@ router.route('/admin').post(authController.createSuperAdmin.seedAdminUser)
 
 router.route('/login').post(authController.login)
 
-router.route('/').post(authController.protect, authController.restrict('superAdmin', 'admin'), authController.addNewUser )
+router.route('/').post(authController.protect, authController.verifyUserStatus, authController.restrict('superAdmin', 'admin'), authController.addNewUser )
 
 router.route('/forgotPassword').post(authController.forgotPassword)
 

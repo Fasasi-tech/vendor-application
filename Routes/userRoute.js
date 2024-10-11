@@ -5,31 +5,35 @@ const userController = require('./../Controllers/userControllers')
 const authController = require('./../Controllers/authController')
 
 
-router.route('/password').patch(authController.protect, userController.updatePassword)
+router.route('/password').patch(authController.protect, authController.verifyUserStatus, userController.updatePassword)
 
-router.route('/stat').get(authController.protect, authController.restrict('superAdmin', 'admin', 'R.O.A'), userController.userAggregate )
+router.route('/stat').get(authController.protect, authController.verifyUserStatus, authController.restrict('superAdmin', 'admin', 'R.O.A'), userController.userAggregate )
 
-router.route('/analytics').get(authController.protect, authController.restrict('superAdmin', 'admin', 'R.O.A'), userController.createdUserAggregate )
+router.route('/analytics').get(authController.protect, authController.verifyUserStatus, authController.restrict('superAdmin', 'admin', 'R.O.A'), userController.createdUserAggregate )
 
-router.route('/me').patch( authController.protect, userController.updateMe)
 
-router.route('/profile').get(authController.protect, userController.getUserProfile)
+router.route('/join').get(authController.protect, authController.verifyUserStatus, authController.restrict('superAdmin', 'admin', 'R.O.A'), userController.leftJoin )
 
-router.route('/delete/:id').delete(authController.protect, authController.restrict('superAdmin', 'admin'), userController.deleteMe)
+router.route('/me').patch( authController.protect,authController.verifyUserStatus, userController.updateMe)
 
-router.route('/').get(authController.protect,authController.restrict('superAdmin','admin', 'R.O.A'),userController.getAllUsers)
+router.route('/profile').get(authController.protect, authController.verifyUserStatus, userController.getUserProfile)
+
+router.route('/delete/:id').delete(authController.protect, authController.verifyUserStatus, authController.restrict('superAdmin', 'admin'), userController.deleteMe)
+
+router.route('/').get(authController.protect, authController.verifyUserStatus, authController.restrict('superAdmin','admin', 'R.O.A'),userController.getAllUsers)
 
 router.route('/logout').post(authController.logout)
 
-router.route('/message').post(authController.protect, userController.bulkMessaging)
+router.route('/message').post(authController.protect, authController.verifyUserStatus, authController.restrict('superAdmin','admin', 'R.O.A'), userController.bulkMessaging)
 
+router.route('/export').get(authController.protect, authController.verifyUserStatus, userController.exportUsersToExcel)
 
-router.route('/:id').get(authController.protect,authController.restrict('superAdmin','admin', 'R.O.A'),userController.getSingleUser)
-                    .patch(authController.protect, authController.restrict('superAdmin', 'admin'), userController.editUsers)
+router.route('/aggregate').get(authController.protect, authController.verifyUserStatus, authController.restrict('superAdmin', 'admin', 'R.O.A'), userController.getFiveUsers)
 
+router.route('/:id').get(authController.protect, authController.verifyUserStatus, authController.restrict('superAdmin','admin', 'R.O.A'),userController.getSingleUser)
+                    .patch(authController.protect, authController.verifyUserStatus, authController.restrict('superAdmin', 'admin'), userController.editUsers)
 
-
-router.route('/reactivate/:id').patch(authController.protect, authController.restrict('superAdmin','admnin'), userController.reactivateUser)
+router.route('/reactivate/:id').patch(authController.protect, authController.verifyUserStatus, authController.restrict('superAdmin','admin'), userController.reactivateUser)
 
 
 

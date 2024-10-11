@@ -6,7 +6,7 @@ const jwt = require('jsonwebtoken')
 const cloudinary = require('../utils/cloudinary');
 const VendorLogHistory = require("../Models/vendorHistoryLog");
 const Notification = require("../Models/notificationModel");
-const {createSendResponse} = require('../utils/response')
+const {createSendResponse, createSendResponseAuth} = require('../utils/response')
 
     const logUpdatedVendor = asyncErrorHandler (async (req, res, next) => {
         const vendorId= req.params.id;
@@ -27,7 +27,7 @@ const {createSendResponse} = require('../utils/response')
     })
 
 exports.createVendor = asyncErrorHandler(async (req, res, next) => {
-    const {name, description, vendor_class, logo} = req.body
+    const {name, description, vendor_class, logo, address, city} = req.body
 
     const result = await cloudinary.uploader.upload(logo, {
         folder: "logos",
@@ -51,6 +51,8 @@ exports.createVendor = asyncErrorHandler(async (req, res, next) => {
             public_id:result.public_id,
             url:result.secure_url
         },
+        address,
+        city,
         user:user._id
     }
 
@@ -74,15 +76,12 @@ exports.createVendor = asyncErrorHandler(async (req, res, next) => {
 
 exports.getAllVendors = asyncErrorHandler(async (req, res, next) => {
 
-    //const getAllVendors=await Vendor.find({}).populate('user')
-    const features = new FilteringFeatures(Vendor.find({}).populate('user'), req.query)
-                        .filter()
-                        .sort()
-                        .paginate()
-                        .limitFields()
-
-    const getAllVendors = await features.query
-    createSendResponse(getAllVendors, 200, res)
+    const features= new FilteringFeatures(Vendor.find({}).populate('user'), req.query).search().sort().paginate().limitFields()
+    const getVendors = await features.query
+    const count = await Vendor.find({})
+    // const getAllVendors = await features.query
+    const result = count.length
+    createSendResponse({getVendors, result}, 200, res)
 
 
 })
@@ -97,18 +96,19 @@ exports.getVendorAndUpdate = asyncErrorHandler(async (req, res, next) => {
            return next(error)
         }
    
-        const currentVendorLogo = await Vendor.findById(req.params.id)
-   
+        // const currentVendorLogo = await Vendor.findById(req.params.id)
    
         if(getVendor){
            getVendor.name= req.body.name || getVendor.name;
            getVendor.description = req.body.description || getVendor.description
            getVendor.vendor_class=req.body.vendor_class || getVendor.vendor_class
+           getVendor.address=req.body.address || getVendor.address
+           getVendor.city= req.body.city || getVendor.city
            
         }
    
         if (req.body.logo && req.body.logo !==''){
-           const logoId = currentVendorLogo.logo?.public_id;
+           const logoId = getVendor.logo?.public_id;
    
            if(logoId){
                await cloudinary.uploader.destroy(logoId)
@@ -139,8 +139,10 @@ exports.getVendorAndUpdate = asyncErrorHandler(async (req, res, next) => {
             await VendorLogHistory.create({
              // vendorId:req.params.id,
                 previousDetails: req.beforeUpdateVendor,
+                currentDetails:updatedVendor,
                 timeStamp: Date.now(),
-                updatedBy: req.user._id
+                updatedBy: req.user._id,
+                action:req.method
             })
         }
 
@@ -185,6 +187,8 @@ exports.getVendorSelfAndPatch = asyncErrorHandler(async (req, res, next) => {
             name,
             description,
             vendor_class,
+            location,
+            address
         
         }
 
@@ -207,16 +211,20 @@ exports.getVendorSelfAndPatch = asyncErrorHandler(async (req, res, next) => {
             }
         
         }
+        const updatedVendor = await Vendor.findByIdAndUpdate(vendor._id, data, {new:true, runValidator:true} )
+
         if (req.beforeUpdateVendorSelf){
             await VendorLogHistory.create({
                 previousDetails: req.beforeUpdateVendorSelf,
+                currentDetails:updatedVendor,
                 timeStamp:Date.now(),
-                updatedBy: req.user._id
+                updatedBy: req.user._id,
+                action:req.method
             })
         }
 
        
-        const updatedVendor = await Vendor.findByIdAndUpdate(vendor._id, data, {new:true, runValidator:true} )
+       
 
         const notification= await Notification.create({
             title:"vendor profile",
@@ -239,20 +247,29 @@ exports.getVendorSelf=asyncErrorHandler(async (req, res, next) =>{
     console.log('Fetching vendor for user:', req.user._id);
 
     const user = req.user
-    const singleVendor=await Vendor.findOne({user:user._id})
-    console.log(singleVendor)
-    if(!singleVendor){
-        const error = new CustomError('vendor with this ID is not found', 404)
-        return next(error)
-     }
+    const singleVendor=await Vendor.findOne({user:user._id}).populate('user')
+    // if(!singleVendor){
+    //     const error = new CustomError('vendor with this ID is not found', 404)
+    //     return next(error)
+    //  }
 
      createSendResponse(singleVendor , 200, res)
 })
 
 
 exports.deleteVendor = asyncErrorHandler(async (req, res, next) => {
-
+    await logUpdatedVendor(req, res, async () => {
     const binVendor = await Vendor.findByIdAndDelete(req.params.id)
+
+    if (req.beforeUpdateVendor){
+        await VendorLogHistory.create({
+            previousDetails: req.beforeUpdateVendor,
+            timeStamp:Date.now(),
+            updatedBy: req.user._id,
+            action:req.method
+        })
+    }
+
 
     if (!binVendor) {
         const error = new CustomError('vendor with this id is not found', 404)
@@ -260,16 +277,20 @@ exports.deleteVendor = asyncErrorHandler(async (req, res, next) => {
         return next(error)
     }
 
+
+
     
     const notification =await Notification.create({
-        title:"Product Notification",
+        title:"Vendor Notification",
         user:req.user._id,
-        message:` vendor with this name, ${binVendor.name} has been deleted!`
+        message:` The vendor, ${binVendor.name} has been deleted!`
 
     })
 
     const io = req.app.get('io');
-    io.emits('new-notification', notification)
+    io.emit('new-notification', notification)
 
     createSendResponse(binVendor, 200, res);
+})
+
 })

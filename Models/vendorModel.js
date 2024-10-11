@@ -10,6 +10,15 @@ const vendorSchema = new mongoose.Schema({
         required:[true, 'Please add a description'],
 
     },
+    city:{
+        type:String,
+        required:[true, 'please add your city']
+    },
+
+    address:{
+        type:String,
+        required:[true, 'please add your address']
+    },
     user:{ type: mongoose.Schema.Types.ObjectId,
         ref: 'User', 
     },
@@ -19,17 +28,19 @@ const vendorSchema = new mongoose.Schema({
         enum: ["Food", "Feed", "Vet", "Service"] 
 
     },
-    logo:{
-        public_id:{
-            type:String,
+    logo: {
+        public_id: {
+            type: String,
+            required: [true, 'Public ID is required'], // required for public_id
         },
-        url:{
-            type:String
+        url: {
+            type: String,
+            required: [true, 'URL is required'], // required for url
         }
     },
     createdAt:{
         type:Date,
-        default:Date.now()
+        default:Date.now
        },
  
 })

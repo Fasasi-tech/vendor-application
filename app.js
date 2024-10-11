@@ -13,6 +13,7 @@ const notificationRoute = require('./Routes/notificationRoutes')
 const productRoute = require('./Routes/productRoutes')
 const productLogRoute = require('./Routes/productLogRoutes')
 const rfqRoute=require('./Routes/rfqRoutes')
+const reviewRoute= require('./Routes/reviewRoutes')
 //const analyticsRoute = require('./Routes/analyticsRoutes')
 const customError = require('./utils/CustomError')
 const initSocketServer = require('./socketServer')
@@ -64,7 +65,7 @@ let limiter = rateLimit({
 })
 
 app.use('/api', limiter)
-app.use(express.json({limit:'10kb'}));
+app.use(express.json({ limit: '100mb' }));
 
 //data sanitization
 app.use(sanitize())
@@ -84,6 +85,7 @@ app.use("/api/v1/product", productRoute)
 app.use("/api/v1/productLog", productLogRoute )
 app.use('/api/v1/rfq', rfqRoute)
 app.use('/api/v1/notifications', notificationRoute)
+app.use('/api/v1/reviews', reviewRoute)
 
 app.all('*', (req,res, next) => {
     const err = new customError(`can't find ${req.originalUrl} on the server!`, 404)

@@ -5,9 +5,15 @@ const vendorLogHistorySchema = new mongoose.Schema({
     previousDetails:{
         type:Object
     },
+    currentDetails: {
+        type: Object,
+    },
+    action:{
+        type:String
+    },
     timeStamp:{
         type:Date, 
-    Default:Date.now(),
+    Default:Date.now,
     
     },
     updatedBy:{

@@ -1,5 +1,7 @@
 const mongoose = require('mongoose')
 
+
+
 const notificationSchema = new mongoose.Schema({
     title:String,
     message:String,
@@ -7,7 +9,7 @@ const notificationSchema = new mongoose.Schema({
   
     createdAt:{
         type:Date,
-        default:Date.now()
+        default:Date.now
     }
 })
 

@@ -8,10 +8,15 @@ const rfqResponseSchema = new mongoose.Schema({
     },
     vendor:{
         type:mongoose.Schema.Types.ObjectId,
-        ref:'User'
+        ref:'Vendor'
     },
-    amount:{
-        type:Number
+    AdditionalInfo:{
+        type:String,
+        required:[true, 'This field is required']
+    },
+    product:{
+         type:mongoose.Schema.Types.ObjectId,
+        ref:'Product'
     },
     attachment:{
         public_id:{
@@ -21,13 +26,17 @@ const rfqResponseSchema = new mongoose.Schema({
             type:String
         }
     },
+    customerEmail:{
+        type:String,
+        required:[true, 'customer email is required']
+    },
     createdAt:{
         type:Date,
-        default:Date.now()
+        default:Date.now
 
     }
 })
 
-const RfqResponse= mongoose.Model('RfqResponse', rfqResponseSchema )
+const RfqResponse= mongoose.model('RfqResponse', rfqResponseSchema )
 
 module.exports = RfqResponse

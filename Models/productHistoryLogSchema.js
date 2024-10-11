@@ -7,11 +7,14 @@ const productHistoryLogSchema = new mongoose.Schema({
     },
     timeStamp:{
         type:Date, 
-    Default:Date.now(),
+        Default:Date.now,
     
     },
     updatedBy:{
 
+        type:String
+    },
+    action:{
         type:String
     }
 })

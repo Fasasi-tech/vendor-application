@@ -171,12 +171,8 @@ exports.generateRfqEmail = (emailrfq) => {
                         <td>${emailrfq.product}</td>
                     </tr>
                     <tr>
-                        <th>Quantity</th>
-                        <td>${emailrfq.quantity}</td>
-                    </tr>
-                    <tr>
                         <th>Buyer</th>
-                        <td>${emailrfq.buyer}</td>
+                        <td>${emailrfq.customer}</td>
                     </tr>
                     <tr>
                         <th>Additional Info</th>
@@ -185,6 +181,80 @@ exports.generateRfqEmail = (emailrfq) => {
                     <tr>
                         <th>Status</th>
                         <td>Pending</td>
+                    </tr>
+                </table>
+            </div>
+        </body>
+        </html>
+    `;
+
+   
+}
+
+exports.generateStatusRfqEmail = (emailrfq) => {
+    return `
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+            <meta charset="UTF-8">
+            <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Email Template</title>
+            <style>
+                body {
+                    font-family: Arial, sans-serif;
+                    margin: 0;
+                    padding: 0;
+                    background-color: #f6f6f6;
+                }
+                .container {
+                    max-width: 600px;
+                    margin: 20px auto;
+                    padding: 20px;
+                    background-color: #ffffff;
+                    border: 1px solid #dddddd;
+                    border-radius: 5px;
+                }
+                table {
+                    width: 100%;
+                    border-collapse: collapse;
+                }
+                table, th, td {
+                    border: 1px solid #dddddd;
+                }
+                th, td {
+                    padding: 10px;
+                    text-align: left;
+                }
+                th {
+                    background-color: #f2f2f2;
+                }
+                p {
+                    margin: 10px 0;
+                }
+                .image-container {
+                    text-align: center;
+                }
+                .image-container img {
+                    max-width: 100%;
+                    height: auto;
+                }
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <table>
+                    <tr>
+                        <th>Product</th>
+                        <td>${emailrfq.product}</td>
+                    </tr>
+                    <tr>
+                        <th>Vendor</th>
+                        <td>${emailrfq.vendor}</td>
+                    </tr>
+                    <tr>
+                        <th>Information</th>
+                        <td>${emailrfq.information}</td>
                     </tr>
                 </table>
             </div>

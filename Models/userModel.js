@@ -40,17 +40,19 @@ const userSchema = new mongoose.Schema({
    password:{
     type:String,
     required:[true, 'Please enter a password.'],
-    minlength:8,
     select:false //do not get password in the response. i dont want to send the field to the frontend
    },
    active:{
     type:Boolean,
     default:true,
    },
+   phone:{
+    type:String
+   },
 
    createdAt:{
     type:Date,
-    default:Date.now()
+    default:Date.now
    },
    
    passwordChangedAt:Date,
@@ -65,6 +67,8 @@ const userSchema = new mongoose.Schema({
 userSchema.pre('save', async function(next){
     if(!this.isModified('password'))
         next()
+
+     
 
        this.password=await bcrypt.hash(this.password, 12)
        next()

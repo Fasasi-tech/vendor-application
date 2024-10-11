@@ -6,10 +6,6 @@ const rfqSchema = new mongoose.Schema({
         type:mongoose.Schema.Types.ObjectId,
         ref:'Product'
     },
-    quantity:{
-        type:Number,
-        required:[true, 'quantity is required']
-    },
     buyer:{
         type:mongoose.Schema.Types.ObjectId,
         ref:'User'
@@ -32,11 +28,13 @@ const rfqSchema = new mongoose.Schema({
     },
     createdAt:{
         type:Date,
-        default:Date.now()
+        default:Date.now
 
     }
 
 })
+
+
 
 const Rfq = mongoose.model('Rfq', rfqSchema)
 

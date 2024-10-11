@@ -10,10 +10,6 @@ const productSchema = new mongoose.Schema({
         required:[true, 'product price is required!']
 
     },
-    description:{
-        type:String,
-        required:[true, 'description is required!']
-    },
     image:{
      
       public_id:{
@@ -34,7 +30,7 @@ const productSchema = new mongoose.Schema({
 
     category:{
     type:String,
-    enum:['Food', 'Vet', 'Feed'],
+    enum:['Food', 'Vet', 'Feed','Service'],
     required:[true, 'category is required']
     },
     
@@ -63,22 +59,42 @@ const productSchema = new mongoose.Schema({
             default:null
         }
     },
+    vendorDetails:{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Vendor',
+    },
     createdAt:{
         type:Date,
-        default:Date.now()
+        default:Date.now
 
+    },
+    productDetails:{
+        type:String,
+        required:[true, 'product details is required']
     },
     createdBy:{
         type:String,
     },
-    reviews: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Review' }],
+    // reviews: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Review' }],
     // reviews:[reviewSchema],
     deleted:{
         type:Boolean,
         default:false,
        } 
-}
+},{
+    toJSON:{virtuals:true},
+    toObject:{virtuals:true}
+},
+
+
 )
+
+productSchema.virtual('review', {
+    ref:'productReview', 
+    foreignField: 'product',
+    localField:"_id"
+
+})
 
 const Product = mongoose.model('Product', productSchema)
 

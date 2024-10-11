@@ -26,10 +26,12 @@ const logPreviousProduct = asyncErrorHandler(async(req, res, next) =>{
 
 
 exports.getAllProducts = asyncErrorHandler(async (req, res, next) => {
-    const features = new filteringFeatures(Product.find({}), req.query).filter().sort().paginate().limitFields()
-  //  const products = await Product.find()
+    const features = new filteringFeatures(Product.find({}), req.query).search().paginate().limitFields()
+//    const productss = await Product.find()
     const products = await features.query
-    createSendResponse(products, 200, res)
+    const count = await Product.find()
+    const result= count.length
+    createSendResponse({products, result}, 200, res)
 })
 
 exports.sendRequestForQuotation = asyncErrorHandler(async (req, res,next) => {
@@ -97,7 +99,7 @@ exports.createProduct = asyncErrorHandler(async (req, res, next) => {
     // Get the vendor name
     const vendorName = user._id;
 
-    const {name, description, price, image, category} = req.body;
+    const {name, title, price, image, category, productDetails} = req.body;
     const result = await cloudinary.uploader.upload(image, {
         folder: "products",
         // width:300,
@@ -106,12 +108,14 @@ exports.createProduct = asyncErrorHandler(async (req, res, next) => {
     const newProduct ={
         name,
         price,
-        description,
+        title,
+        productDetails,
         image: {
             public_id:result.public_id,
             url:result.secure_url
         },
         vendor:vendorName,
+        vendorDetails:vendor._id,
         category,
         createdBy:vendor.name,
 
@@ -160,8 +164,9 @@ exports.editSingleProduct = asyncErrorHandler( async (req, res, next) =>{
 //build the data object
         const data ={
             name: req.body.name,
-            description:req.body.description,
+            // description:req.body.description,
             price:req.body.price,
+            productDetails:req.body.productDetails,
             category:req.body.category,
            createdBy:vendorName,
         }
@@ -217,19 +222,20 @@ exports.editSingleProduct = asyncErrorHandler( async (req, res, next) =>{
                 // productId: req.params.id,
                 previousDetails: req.previousProduct,
                 timeStamp: Date.now(),
-                updatedBy: vendor.name
+                updatedBy: vendor.name,
+                action:req.method
             });
         }
 
         const notification =await Notification.create({
-            title:"Product Notification",
+            title:"Product",
             user:req.user._id,
             message:`${vendorName} has updated their product`
 
         })
 
         const io = req.app.get('io');
-        io.emits('new-notification', notification)
+        io.emit('new-notification', notification)
 
         createSendResponse(updatedProduct, 200, res);
     });
@@ -242,13 +248,17 @@ exports.getVendorProducts = asyncErrorHandler(async (req, res, next) =>{
         const error = new CustomError('vendor not found', 404)
         return next(error)
       }
-      const getProduct = await Product.find({vendor:req.user._id, deleted:false})
 
-      createSendResponse(getProduct, 200, res)
+      const features = new filteringFeatures(Product.find({vendor:req.user._id, deleted:false}), req.query).search().paginate().limitFields()
+      
+      const getProduct = await features.query
+      const count = await Product.find({vendor:req.user._id, deleted:false})
+      const result=count.length
+      createSendResponse({getProduct, result}, 200, res)
 })
 
 exports.getSingleProduct = asyncErrorHandler(async (req, res, next) =>{
-    const singleProduct = await Product.findById(req.params.id)
+    const singleProduct = await Product.findById(req.params.id).populate("vendorDetails").populate('review')
     if (!singleProduct){
         const error = new CustomError('product with this ID is not found', 404)
         return next(error)
@@ -273,43 +283,43 @@ exports.deleteProduct = asyncErrorHandler(async (req, res, next) => {
         await cloudinary.uploader.destroy(imgId)
     }
 
-    const comments = await Review.find({productid:req.param.id})
+    // const comments = await Review.find({productid:req.param.id})
       
-    // Function to recursively delete attachments in comments and replies
-      const deleteAttachments = async (comment) => {
-        if (comment.attachment && comment.attachment.public_id) {
-            await cloudinary.uploader.destroy(comment.attachment.public_id);
-        }
+    // // Function to recursively delete attachments in comments and replies
+    //   const deleteAttachments = async (comment) => {
+    //     if (comment.attachment && comment.attachment.public_id) {
+    //         await cloudinary.uploader.destroy(comment.attachment.public_id);
+    //     }
 
-        for (const replyId of comment.replies) {
-            // in mongodb the replies of comment (replyId) is always in id which is inside the replies array.
-            const reply = await Review.findById(replyId);
-            console.log(replyId)
-            if (reply) {
-                await deleteAttachments(reply);
-                // this replyid also have a full document which we are trying to delete
-                await Review.findByIdAndDelete(replyId);
-            }
-        }
-    };
+    //     for (const replyId of comment.replies) {
+    //         // in mongodb the replies of comment (replyId) is always in id which is inside the replies array.
+    //         const reply = await Review.findById(replyId);
+    //         console.log(replyId)
+    //         if (reply) {
+    //             await deleteAttachments(reply);
+    //             // this replyid also have a full document which we are trying to delete
+    //             await Review.findByIdAndDelete(replyId);
+    //         }
+    //     }
+    // };
 
     // Loop through comments and delete attachments and comments
-    for (const comment of comments) {
-        await deleteAttachments(comment);
-        await Review.findByIdAndDelete(comment._id); // Use findByIdAndDelete to delete the comment
-    }
+    // for (const comment of comments) {
+    //     await deleteAttachments(comment);
+    //     await Review.findByIdAndDelete(comment._id); // Use findByIdAndDelete to delete the comment
+    // }
 
     const deletedProduct =await Product.findByIdAndUpdate(req.params.id, {deleted:true}, {new:true})
 
     const notification=await Notification.create({
-        title:"Product Notification",
+        title:"Product ",
         user:req.user._id,
         message:`${vendor.name} has deleted their product`
 
     })
 
     const io = req.app.get('io');
-    io.emits('new-notification', notification)
+    io.emit('new-notification', notification)
 
     const objDeletedProduct = deletedProduct.toJSON()
     if (deletedProduct){
@@ -320,10 +330,11 @@ exports.deleteProduct = asyncErrorHandler(async (req, res, next) => {
 
         })
     }
-    res.status(204).json({
+    res.status(200).json({
         status:'success',
-        message:'Product has been deleted',
-        data:null
+        data:{
+            message:'Product has been deleted',
+        }
     })
 })
 
@@ -418,4 +429,25 @@ exports.getProductWithReviews = asyncErrorHandler(async (req, res) => {
       res.status(200).json({ product });
 
   });
+
+  exports.categoryAggregate = asyncErrorHandler(async (req, res) =>{
+    const categoryAgg = await Product.aggregate([
+        {$group:{_id:"$category",
+        count:{$sum:1}
+    }
+        }
+    
+    ])
+
+    createSendResponse(categoryAgg, 200, res)
+  })
   
+  exports.getProductsBasedOnVendorId = asyncErrorHandler(async (req, res) =>{
+    const {id} = req.params
+    // const vendorProduct= await Product.find({vendorDetails:id});
+    const features = new filteringFeatures(Product.find({vendorDetails:id}), req.query).paginate()
+    const getProducts = await features.query
+    const count = await Product.find({vendorDetails:id})
+    const result = count.length
+    createSendResponse({getProducts, result}, 200, res)
+  })
