@@ -4,7 +4,7 @@ const vendorController = require('../Controllers/vendorController')
 const authController = require('../Controllers/authController')
 const vendorLogController = require('../Controllers/vendorLogController')
 
-router.route('/').get(authController.protect, authController.verifyUserStatus, authController.restrict('superAdmin', 'admin', 'R.O.A'), vendorController.getAllVendors)
+router.route('/').get(authController.protect, authController.verifyUserStatus, authController.restrict('superAdmin', 'admin', 'R.O.A', 'user'), vendorController.getAllVendors)
 router.route('/').post(authController.protect, authController.verifyUserStatus, authController.restrict('vendor'), vendorController.createVendor )
                  .patch(authController.protect, authController.verifyUserStatus, authController.restrict('vendor'), vendorController.getVendorSelfAndPatch)
                 
