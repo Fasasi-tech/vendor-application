@@ -41,7 +41,7 @@ const io=initSocketServer(server);
 app.set('io', io); // Make io available globally via app
 const cors= require('cors')
 
-const allowedOrigins = ['http://localhost:3000', 'http://localhost:3001'];
+const allowedOrigins = ['http://localhost:3000', 'http://localhost:3001','https://bnsl-app.onrender.com'];
 
 app.use(cors({
     origin: function(origin, callback) {
