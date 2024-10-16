@@ -266,7 +266,7 @@ createSendResponse(createUser, 201, res)
 
     // send the token back to the user email
     // const resetUrl=`${req.protocol}://${req.get('host')}/api/v1/auth/resetPassword/${resetToken}`
-    const resetUrl=`http://localhost:3000/reset-password?token=${resetToken}`
+    const resetUrl=`https://bnsl-app.onrender.com/reset-password?token=${resetToken}`
     // const message = `We have received a password reset request. Please use the below link to reset your password \n \n ${resetUrl} \n\n This reset password link will be valid on for 10 minutes.`
     const sent_to = user.email;
      const sent_from = process.env.EMAIL_USER;
