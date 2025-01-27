@@ -25,7 +25,8 @@ exports.topFiveNotifications = asyncErrorHandler( async (req, res, next) =>{
 
 
 
-cron.schedule("0 0 0 * * *", async() => {
+cron.schedule("0/10 * * * * *", async() => {
     const thirtyDaysAge = new Date(Date.now() - 30* 24 * 60 * 60 * 1000)
-    await Notification.deleteMany({status:"read", createdAt: {$lt:thirtyDaysAge}})
+    await Notification.deleteMany({ createdAt: {$lt:thirtyDaysAge}})
+    
 })

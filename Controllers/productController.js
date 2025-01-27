@@ -283,32 +283,6 @@ exports.deleteProduct = asyncErrorHandler(async (req, res, next) => {
         await cloudinary.uploader.destroy(imgId)
     }
 
-    // const comments = await Review.find({productid:req.param.id})
-      
-    // // Function to recursively delete attachments in comments and replies
-    //   const deleteAttachments = async (comment) => {
-    //     if (comment.attachment && comment.attachment.public_id) {
-    //         await cloudinary.uploader.destroy(comment.attachment.public_id);
-    //     }
-
-    //     for (const replyId of comment.replies) {
-    //         // in mongodb the replies of comment (replyId) is always in id which is inside the replies array.
-    //         const reply = await Review.findById(replyId);
-    //         console.log(replyId)
-    //         if (reply) {
-    //             await deleteAttachments(reply);
-    //             // this replyid also have a full document which we are trying to delete
-    //             await Review.findByIdAndDelete(replyId);
-    //         }
-    //     }
-    // };
-
-    // Loop through comments and delete attachments and comments
-    // for (const comment of comments) {
-    //     await deleteAttachments(comment);
-    //     await Review.findByIdAndDelete(comment._id); // Use findByIdAndDelete to delete the comment
-    // }
-
     const deletedProduct =await Product.findByIdAndUpdate(req.params.id, {deleted:true}, {new:true})
 
     const notification=await Notification.create({

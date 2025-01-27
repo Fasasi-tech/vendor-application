@@ -1,23 +1,13 @@
 const CustomError = require('../utils/CustomError');
 const FilteringFeatures = require('../utils/filteringFeatures')
 const User= require('./../Models/userModel');
-const multer = require('multer')
-const sharp = require('sharp')
 const asyncErrorHandler = require('./../utils/asyncErrorHandler')
-// const { createSendResponse } = require('./authController');
-const jwt = require('jsonwebtoken')
-const util = require('util')
 const {sendEmail} = require('./../utils/email')
-const crypto = require('crypto')
-const fs = require('fs');
-const { PDFDocument } = require('pdf-lib');
-const path = require('path');
-const multerStorage = multer.memoryStorage()
 const ExcelJS = require('exceljs');
 const Notification = require('../Models/notificationModel');
 const {createSendResponse} = require('../utils/response')
 const cloudinary = require('../utils/cloudinary');
-
+const Group = require('./../Models/groupSchema')
 
 const filterReqObj = (obj, ...allowedFields) =>{
     const newObj ={}
@@ -32,7 +22,7 @@ const filterReqObj = (obj, ...allowedFields) =>{
 
 
 exports.getAllUsers= asyncErrorHandler(async (req, res, next) => {
-    const features = new FilteringFeatures(User.find({}), req.query).search().sort().paginate().limitFields()
+    const features = new FilteringFeatures(User.find({}).populate({path:'group',populate:{path:'permission'}}), req.query).search().sort().paginate().limitFields()
     const getUsers=await features.query
     const count = await User.find({})
     const result= count.length 
@@ -43,22 +33,21 @@ exports.getAllUsers= asyncErrorHandler(async (req, res, next) => {
 })
 
 exports.getFiveUsers= asyncErrorHandler(async (req, res, next) =>{
-    const getUsers= await User.find().sort({ createdAt: -1 }).limit(5);
+    const getUsers= await User.find().populate('group').sort({ createdAt: -1 }).limit(5);
 
     createSendResponse(getUsers, 200, res)
 })
 
 exports.editUsers = asyncErrorHandler(async (req, res, next) =>{
-    // const filterObj = filterReqObj(req.body, 'roles')
     const editUser = await User.findById(req.params.id)
     if(!editUser){
         const error = new CustomError('User with this ID is not found', 404)
         return next(error)
     }
-    //const editUsers= await User.findByIdAndUpdate(req.params.id, filterObj, {runValidators:true, new:true} )
-if(editUser){
-    editUser.role=req.body.role || editUser.role
-}
+    if(editUser){
+        editUser.group=req.body.group || editUser.group
+        editUser.permissions=req.body.permissions || editUser.permissions
+    }
 
 const editSuccess= await editUser.save()
 
@@ -76,7 +65,7 @@ io.emit('new-notification', notification);
 })
 
 exports.getSingleUser =asyncErrorHandler(async (req, res, next) => {
-    const getUser = await User.findById(req.params.id)
+    const getUser = await User.findById(req.params.id).populate({path:'group',populate:{path:'permission'}})
     if(!getUser){
         const error = new CustomError('User with this ID is not found', 404)
         return next(error)
@@ -133,8 +122,6 @@ exports.updatePassword = asyncErrorHandler(async (req, res, next) => {
         if(! (await user.comparePasswordInDb(req.body.currentPassword, user.password))){
             return next(new CustomError('The current password you provided is wrong', 401))
         }
-
-         // Check if the new password is the same as the current password
 
     //IF THE SUPPLIED PASSWORD IS CORRECT, UPDATE THE USER PASSWORD WITH NEW VALUE
         user.password = req.body.password
@@ -275,20 +262,16 @@ exports.reactivateUser = asyncErrorHandler(async (req, res, next) =>{
     const io = req.app.get('io');
     io.emit('new-notification', notification);
 
-    // res.status(200).json({
-    //     status: 'success',
-    //     message: 'Your account has been reactivated. You can now log in.',
-    //     data: activatedUser
-    // });
+
     createSendResponse({user:activatedUser, message:'Your account has been reactivated. You can now log in.'}, 200, res)
 })
 
 exports.userAggregate = asyncErrorHandler(async (req, res, next) =>{
  
-    const user = await User.aggregate([
+    const user = await Group.aggregate([
         {
             $group:{
-                _id:"$role",
+                _id:"$name",
                 count:{$sum:1}
             }
         }])
@@ -360,25 +343,24 @@ exports.createdUserAggregate = asyncErrorHandler(async (req, res, next) => {
 
 exports.exportUsersToExcel = asyncErrorHandler( async (req, res, next)=>{
 
-    const allUsers = await User.find();
+    const allUsers = await User.find().populate('group', 'name');
 
      // Create a new Excel workbook and worksheet
      const workbook = new ExcelJS.Workbook();
      const worksheet = workbook.addWorksheet('Users');
 
      worksheet.columns = [ 
-        { header: "First Name", key: "fname", width: 15 }, 
-        { header: "Last Name", key: "lname", width: 15 }, 
-        { header: "createdAt", key: "createdAt", width: 25 }, 
         { header: "email", key: "email", width: 25 }, 
-        { header: "role", key: "role", width: 25 },
+        { header: "group", key: "group", width: 25 },
         { header: "active", key: "active", width: 25 }, 
+        { header: "createdAt", key: "createdAt", width: 25 }, 
+       
         ];
         
 
 
     allUsers.forEach(user => {
-        worksheet.addRow([user.firstName , user.lastName, user.createdAt, user.email, user.role, user.active  ])
+        worksheet.addRow([  user.email, user.group?.name, user.active, user.createdAt ])
     })
 
       // Set response headers for Excel file download
@@ -395,87 +377,99 @@ exports.exportUsersToExcel = asyncErrorHandler( async (req, res, next)=>{
 })
 
 exports.leftJoin = asyncErrorHandler(async (req, res, next) =>{
-    const {searchText} = req.query
+    
+    const { searchText, role } = req.query; // Optional filters
 
-    const pipeline= [
-              {$lookup:
-           {
-               from:'vendors',
-               localField:"_id",
-            foreignField:"user",
-            as:"vendorDetails"
+    // Define the aggregation pipeline
+    const pipeline = [
+        // Lookup vendors
+        {
+            $lookup: {
+                from: 'vendors', // Vendors collection
+                localField: '_id', // User ID
+                foreignField: 'user', // User field in vendors
+                as: 'vendorDetails',
+            },
         },
-           
-     }
+        // Lookup customers
+        {
+            $lookup: {
+                from: 'customers', // Customers collection
+                localField: '_id', // User ID
+                foreignField: 'user', // User field in customers
+                as: 'customerDetails',
+            },
+        },
+        // Add a unified role field
+        {
+            $addFields: {
+                role: {
+                    $cond: {
+                        if: { $gt: [{ $size: '$vendorDetails' }, 0] },
+                        then: 'Vendor',
+                        else: {
+                            $cond: {
+                                if: { $gt: [{ $size: '$customerDetails' }, 0] },
+                                then: 'Customer',
+                                else: 'User',
+                            },
+                        },
+                    },
+                },
+            },
+        },
+        // Add businessName for vendors or name for customers
+        {
+            $addFields: {
+                businessName: { $arrayElemAt: ['$vendorDetails.businessName', 0] },
+                customerName: {
+                    $concat: [
+                        { $arrayElemAt: ['$customerDetails.firstName', 0] },
+                        ' ',
+                        { $arrayElemAt: ['$customerDetails.lastName', 0] },
+                    ],
+                },
+            },
+        },
+        // Optional: Search functionality
+        ...(searchText
+            ? [
+                  {
+                      $match: {
+                          $or: [
+                              { email: { $regex: searchText, $options: 'i' } },
+                              { 'vendorDetails.businessName': { $regex: searchText, $options: 'i' } },
+                              { 'customerDetails.firstName': { $regex: searchText, $options: 'i' } },
+                              { 'customerDetails.lastName': { $regex: searchText, $options: 'i' } },
+                          ],
+                      },
+                  },
+              ]
+            : []),
+        // Optional: Role filter
+        ...(role
+            ? [
+                  {
+                      $match: { role }, // Match Vendor, Customer, or User
+                  },
+              ]
+            : []),
+        // Project only the necessary fields
+        {
+            $project: {
+                email: 1,
+                role: 1,
+                businessName: 1,
+                customerName: 1,
+                'vendorDetails.phoneNumber': 1,
+                'customerDetails.phoneNumber': 1,
+            },
+        },
+    ];
 
-    ]  
-    
-    if (searchText){
+    // Execute the aggregation pipeline
+    const users = await User.aggregate(pipeline);
 
-         pipeline.push({$match:{
-          $or:[
-             {firstName:{$regex:searchText, $options:'i'}},
-                {lastName:{$regex:searchText, $options:'i'}},
-               {email:{$regex:searchText, $options:'i'}},
-               {role:{$regex:searchText, $options:'i'}},
-               {'vendorDetails.name':{$regex:searchText, $options:'i'}},
-               {'vendorDetails.vendor_class':{$regex:searchText, $options:'i'}}
-
-
-            ]
-        }})
-        }
-
-        pipeline.push({
-               $project:{
-                "firstName":1,
-               "lastName":1,
-               "email":1,
-               "role":1,
-               'vendorDetails.name':1,
-               'vendorDetails.vendor_class':1
-
-          }
-         
-        })
-
-    
-    // const users = await User.aggregate([
-    //     {$lookup:
-    //         {
-    //             from:'vendors',
-    //             localField:"_id",
-    //             foreignField:"user",
-    //             as:"vendorDetails"
-    //         },
-           
-    //     },
-    //     {
-    //         $match:{
-    //             $or:[
-    //                {firstName:{$regex:searchText, $options:'i'}},
-    //                {lastName:{$regex:searchText, $options:'i'}},
-    //                {email:{$regex:searchText, $options:'i'}},
-    //                {'vendorDetails.name':{$regex:searchText, $options:'i'}},
-    //                {'vendorDetails.vendor_class':{$regex:searchText, $options:'i'}}
-
-
-    //             ]
-    //         }
-    //     },
-    //     {
-    //         $project:{
-    //             "firstName":1,
-    //             "lastName":1,
-    //             "email":1,
-    //             'vendorDetails.name':1,
-    //             'vendorDetails.vendor_class':1
-
-    //         }
-    //     }
-    // ])
-
-    const users= await User.aggregate(pipeline)
-
-    createSendResponse(users, 200, res)
+    // Send the response
+    createSendResponse(users, 200, res);
 })

@@ -5,32 +5,28 @@ const authController = require('./../Controllers/authController')
 const productController = require('./../Controllers/productController')
 const ReviewController= require('./../Controllers/reviewController')
 const reviewRoute= require('./reviewRoutes')
-const rfqRoute = require('./rfqRoutes')
+// const rfqRoute = require('./rfqRoutes')
 
 router.use ('/:id/reviews', reviewRoute )
-router.use('/:id/rfq', rfqRoute )
+// router.use('/:id/rfq', rfqRoute )
 
-router.route('/').get(authController.protect, authController.restrict('admin', 'superAdmin', 'user', 'R.O.A'), productController.getAllProducts)
-                 .post(authController.protect, authController.restrict('vendor'),  productController.createProduct)
+router.route('/').get(authController.protect,  productController.getAllProducts)
+                 .post(authController.protect,   productController.createProduct)
 
-router.route('/vendor-product').get(authController.protect, authController.restrict('vendor'), productController.getVendorProducts)
+router.route('/vendor-product').get(authController.protect,  productController.getVendorProducts)
 
 
 router.route('/Deleted-Products').get(authController.protect, productController.getDeletedProduct)
 
-router.route('/category').get(authController.protect, authController.restrict('admin', 'superAdmin', 'user','R.O.A'), productController.categoryAggregate)
+router.route('/category').get(authController.protect,  productController.categoryAggregate)
 
-router.route('/:id').patch(authController.protect, authController.restrict('vendor'), productController.editSingleProduct)
+router.route('/:id').patch(authController.protect,  productController.editSingleProduct)
                     .get(authController.protect, productController.getSingleProduct)
-                    .delete(authController.protect, authController.restrict('vendor'), productController.deleteProduct )
+                    .delete(authController.protect, productController.deleteProduct )
 
-router.route('/vendor-product/:id').get(authController.protect, authController.restrict('admin', 'superAdmin', 'user', 'vendor'), productController.getProductsBasedOnVendorId)
+router.route('/vendor-product/:id').get(authController.protect,  productController.getProductsBasedOnVendorId)
 
-router.route('/vendorEmail/:id').post(authController.protect, authController.restrict('user', 'admin', 'superAdmin'), productController.sendRequestForQuotation )
+router.route('/vendorEmail/:id').post(authController.protect,  productController.sendRequestForQuotation )
 
-// router.route('/:id/reviews').post(authController.protect, productController.comment )
-//                             .get(authController.protect, productController.getProductWithReviews);
-
-// router.route('/:id/reviews').post(authController.protect, authController.restrict('user', 'admin', 'superAdmin'), ReviewController.createReview)
 
 module.exports= router; 

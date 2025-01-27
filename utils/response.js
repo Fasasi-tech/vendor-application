@@ -37,6 +37,9 @@ exports.createSendResponseAuth = (user, statusCode, res ) =>{
 }
 
 exports.createSendResponse = (user, statusCode, res) =>{
+    if (!user && statusCode === 204) {
+            return res.status(204).send(); // No Content     
+        }
     res.status(statusCode).json({
         status:'success',
        

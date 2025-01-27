@@ -4,7 +4,7 @@ const {createSendResponse} = require('../utils/response')
 const PreviousVendorHistory = require('./../Models/vendorHistoryLog')
 
 exports.getAllVendorHistory = asyncErrorHandler(async (req, res, next) =>{
-    const pagination = new FilteringFeatures(PreviousVendorHistory.find().populate('updatedBy').sort({timeStamp:-1}), req.query).search().sort().paginate().limitFields();
+    const pagination = new FilteringFeatures(PreviousVendorHistory.find().populate('updatedBy').sort({timestamps:-1}), req.query).search().sort().paginate().limitFields();
     const getAllVendorsHistory = await pagination.query
     const count = await PreviousVendorHistory.find()
     const result = count.length

@@ -2,17 +2,10 @@ const mongoose = require('mongoose')
 const validator = require('validator')
 const bcrypt = require('bcryptjs')
 const crypto = require('crypto')
+const { timeStamp } = require('console')
 
 //  name, email, password, photo
 const userSchema = new mongoose.Schema({
-   firstName:{
-    type:String,
-    required:[true, 'Please enter your name.']
-   },
-   lastName:{
-    type:String,
-    required:[true, 'Please enter your name.']
-   },
    email:{
     type:String,
     required:[true, 'please enter an email.'],
@@ -20,23 +13,6 @@ const userSchema = new mongoose.Schema({
     lowercase:true,
     validate: [validator.isEmail, 'Please enter a valid email']
    },
-   image:{
-     
-    public_id:{
-      type:String,
-     
-    },
-    url:{
-      type:String,
-    
-    }
-  },
-   role:{
-    type:String,
-    enum:['admin', 'vendor', 'user', 'superAdmin', 'R.O.A'],
-    default:'user'
-   },
-
    password:{
     type:String,
     required:[true, 'Please enter a password.'],
@@ -46,30 +22,33 @@ const userSchema = new mongoose.Schema({
     type:Boolean,
     default:true,
    },
-   phone:{
-    type:String
+   superAdmin:{
+    type:Boolean,
+    default:false
    },
 
-   createdAt:{
-    type:Date,
-    default:Date.now
+   permissions:[{
+      type:mongoose.Schema.Types.ObjectId,
+      ref:'permission'
+   }],
+
+   group:{
+      type:mongoose.Schema.Types.ObjectId,
+      ref:'group'
    },
-   
+
    passwordChangedAt:Date,
    passwordResetToken:String,
    passwordResetTokenExpires:Date
 
 
-}
+},  {timestamps:true},
 
 )
 
 userSchema.pre('save', async function(next){
     if(!this.isModified('password'))
         next()
-
-     
-
        this.password=await bcrypt.hash(this.password, 12)
        next()
 }) 

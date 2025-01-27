@@ -6,46 +6,27 @@ const {promisify} = require('util')
 const crypto = require('crypto')
 const {sendEmail} = require('../utils/email')
 const {plainEmailTemplate, generatePasswordResetTemplate} = require('../utils/mail')
-const cloudinary = require('../utils/cloudinary');
 const Notification = require('../Models/notificationModel');
 const {createSendResponse, createSendResponseAuth} = require('../utils/response')
 const Blacklist = require('../Models/blacklistSchema')
-
-
+const Permission = require('../Models/permissionShema')
+const Group = require('../Models/groupSchema')
 
 exports.createSuperAdmin=  {
     seedAdminUser: asyncErrorHandler(async(req, res, next) =>{
     const existingsuperAdmin= await User.findOne({role:'superAdmin'})
     
     if (existingsuperAdmin){
-        const error = new CustomError('superAdmin user already exists', 400)
+        const error = new CustomError('superAdmin  already exists', 400)
         return next(error);
     }
 
     const newUser = new User({
-        firstName:process.env.ADMIN_FIRSTNAME,
-        lastName:process.env.ADMIN_LASTNAME,
         email:process.env.ADMIN_EMAIL,
-        role:'superAdmin',
+        superAdmin:!!true,
         password:process.env.ADMIN_PASSWORD,
         
     })
-
-    if(req.body.image){
-        const result = await cloudinary.uploader.upload(req.body.image, {
-            folder: "profile",
-            width: 300,
-            crop: "scale"
-        });
-
-        newUser.image={
-            public_id: result.public_id,
-            url: result.secure_url
-        }
-    
-    }
-
-
    
     await newUser.save()
     createSendResponseAuth(newUser, 201, res)
@@ -63,7 +44,10 @@ exports.login =asyncErrorHandler(async(req, res, next) =>{
         return next(error);
     }
 
-    const user = await User.findOne({email}).select('+password')
+    const user = await User.findOne({email}).select('+password').populate({
+        path:'group',
+        populate:{path:'permission'}
+    })
 
     if (user.active === false){
         const error = new CustomError('User has been deactivated', 404)
@@ -89,6 +73,7 @@ exports.logout = asyncErrorHandler(async(req, res, next) => {
     if (!authHeader){
         return  next(new CustomError('No content', 204))
     }
+
 
     const cookie = authHeader.split('=')[1]
     const accessToken = cookie.split(';')[0]
@@ -157,6 +142,8 @@ exports.protect = asyncErrorHandler(async (req, res, next) =>{
 
 })
 
+
+
 exports.verifyUserStatus =asyncErrorHandler(async(req, res, next) =>{
     const userId= req.user._id
 
@@ -170,8 +157,6 @@ exports.verifyUserStatus =asyncErrorHandler(async(req, res, next) =>{
     next()
 })
 
-
-
 exports.restrict = (...roles) =>{
     return (req, res, next) =>{
         if(!roles.includes(req.user.role)){
@@ -184,57 +169,102 @@ exports.restrict = (...roles) =>{
 }
 
 
+exports.checkPermission = (codename, contentType) =>{
+
+    return async (req, res, next) =>{
+        const user = await User.findById(req.user._id)
+        .populate({
+            path:'group',
+            populate:{path:'permission'}
+        })
+
+        if(user.superAdmin) return next()
+
+        console.log(user)
+        const userPermissions = user.permissions;
+        const groupPermissions = user.group.permission;
+
+
+        const filterPermission = userPermissions.some((userPermission) =>userPermission.contentType === contentType && userPermission.codename === codename)
+        const filterGroupPermission = groupPermissions.some((groupPermission) => groupPermission.contentType ===contentType && groupPermission.codename===codename)
+
+        if (filterPermission || filterGroupPermission) return next()
+
+        res.status(400).json({
+            status: 'fail',
+            message: `You do not have ${codename} permission for this resource`,
+        });
+    } 
+}
+
+
 exports.addNewUser = asyncErrorHandler(async (req, res, next) =>{
 
-    const {firstName, lastName, email, role, image} = req.body
-
-    // Automatically set password as a concatenation of firstname and lastname
-    const password =`${firstName}${lastName}`.toLowerCase()
-    console.log(password)
-    const signUser = {
-        firstName,
-        lastName,
-        email,
-        role,
-        password
-    }
-
-    if (image){
-        const result = await cloudinary.uploader.upload(image, {
-            folder: "profile",
-            width: 300,
-            crop: "scale"
-        });
-
-        signUser.image={
-            public_id: result.public_id,
-            url: result.secure_url
-        }
-    }
+    const { email, group, permissions=[]} = req.body
 
     const existingUser = await User.findOne({email})
 
     if (existingUser){
-        const error = new CustomError('We could not find the user with this given email', 404)
+        const error = new CustomError("This user exist. please use another email address", 404)
         return next(error)
     }
 
+    let addPermissionToUser = [];
+    if (permissions.length >0){
 
+        const addPermissionToUser= await Permission.find({_id: {$in:[permissions]}})
+        if (addPermissionToUser.length !== Permissions.length){
+             const error = new CustomError("some permissions are invalid", 404)
+             return next(error)
+        }
+        
+     }
+     
 
-   const createUser= await User.create(signUser)
-   const url=`${req.protocol}://${req.get('host')}/me`
-   console.log(url)
-//    await new Email(createUser, url).sendWelcome()
-const sent_to = createUser.email;
+    // Automatically set password as a concatenation of firstname and lastname
+    function getRandomAlphabetString(length = 5) {
+        const letters = [
+          ...Array.from({ length: 26 }, (_, i) => String.fromCharCode(65 + i)), // Uppercase A-Z
+          ...Array.from({ length: 26 }, (_, i) => String.fromCharCode(97 + i))  // Lowercase a-z
+        ];
+      
+        let result = '';
+        for (let i = 0; i < length; i++) {
+          result += letters[Math.floor(Math.random() * letters.length)];
+        }
+      
+        return result;
+    }
+
+    const password = getRandomAlphabetString(5);
+    console.log(password, 'pass')
+    const signUser = {
+        email,
+        password, 
+        group,
+        permissions: addPermissionToUser.map((perm) => perm._id)  
+    }
+    console.log(signUser, 'sign')
+    
+   
+    const createUser= await User.create(signUser)
+    console.log(createUser, 'create')
+
+    const sent_to = createUser.email;
     const sent_from = process.env.EMAIL_OWNER;
     const reply_to = createUser.email;
     const subject = "WELCOME EMAIL";
     const message = plainEmailTemplate(
         "You are now registered",
-    `Dear ${createUser.firstName}, Welcome to BNSL. We are glad to have you.`
+    `Dear ${createUser.email}, Welcome to BNSL. We are glad to have you. Your password is ${password}. please try changing your password when login is successful. `
 
     );
-await sendEmail(subject, message, sent_to, sent_from, reply_to)
+   
+    try {
+        await sendEmail(subject, message, sent_to, sent_from, reply_to);
+      } catch (err) {
+        console.error("Failed to send email:", err);
+      }
 
 const notification=await Notification.create({
     title:"User Created",
@@ -254,6 +284,7 @@ createSendResponse(createUser, 201, res)
  exports.forgotPassword = asyncErrorHandler(async (req, res, next) =>{
     //Get user based on posted email
     const user = await User.findOne({email:req.body.email})
+
     if(!user){
         const error = new CustomError('We could not find the user with this given email', 404)
         return next(error)
@@ -277,10 +308,9 @@ createSendResponse(createUser, 201, res)
     
     try{
         await sendEmail(subject, message, sent_to, sent_from, reply_to)
-    // await new Email(user,resetUrl).sendPasswordReset()
-    res.status(200).json({
-        status:'success',
-        message:'Password reset link sent successfully'
+        res.status(200).json({
+            status:'success',
+            message:'Password reset link sent successfully'
     })
 } catch(err){
     user.passwordResetToken = undefined;

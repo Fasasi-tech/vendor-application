@@ -11,16 +11,13 @@ const vendorLogHistorySchema = new mongoose.Schema({
     action:{
         type:String
     },
-    timeStamp:{
-        type:Date, 
-    Default:Date.now,
-    
-    },
+   
     updatedBy:{
 
         type:mongoose.Schema.Types.ObjectId, ref:'User'
     }
-})
+},
+{timestamps:true})
 
 const VendorLogHistory = mongoose.model('VendorLogHistory', vendorLogHistorySchema)
 

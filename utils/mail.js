@@ -262,3 +262,71 @@ exports.generateStatusRfqEmail = (emailrfq) => {
         </html>
     `;
 }
+
+exports.generateCustomerRfqEmail = (emailRfq) => {
+    return `
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+            <meta charset="UTF-8">
+            <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Email Template</title>
+            <style>
+                body {
+                    font-family: Arial, sans-serif;
+                    margin: 0;
+                    padding: 0;
+                    background-color: #f6f6f6;
+                }
+                .container {
+                    max-width: 600px;
+                    margin: 20px auto;
+                    padding: 20px;
+                    background-color: #ffffff;
+                    border: 1px solid #dddddd;
+                    border-radius: 5px;
+                }
+                table {
+                    width: 100%;
+                    border-collapse: collapse;
+                }
+                table, th, td {
+                    border: 1px solid #dddddd;
+                }
+                th, td {
+                    padding: 10px;
+                    text-align: left;
+                }
+                th {
+                    background-color: #f2f2f2;
+                }
+                p {
+                    margin: 10px 0;
+                }
+                .image-container {
+                    text-align: center;
+                }
+                .image-container img {
+                    max-width: 100%;
+                    height: auto;
+                }
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <table>
+                    <tr>
+                        <th>Product</th>
+                        <td>${emailRfq.product}</td>
+                    </tr>
+                    <tr>
+                        <th>Description</th>
+                        <td>${emailRfq.description}</td>
+                    </tr>
+                </table>
+            </div>
+        </body>
+        </html>
+    `;
+}

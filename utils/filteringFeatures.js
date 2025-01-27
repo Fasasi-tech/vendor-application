@@ -26,6 +26,7 @@ class FilteringFeatures{
                 { lastName: { $regex: search, $options: 'i' } },
                 { email: { $regex: search, $options: 'i' } },
                 { name: { $regex: search, $options: 'i' } },
+                { product: { $regex: search, $options: 'i' } },
                 {'previousDetails.name':{ $regex: search, $options: 'i' }},
                 {'updatedBy.email':{ $regex: search, $options: 'i' }}
                 
